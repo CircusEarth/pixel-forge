@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PIXEL FORGE — 8-Bit Art Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <!-- CRT Scanline Overlay -->
+  <div class="crt-overlay"></div>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-left">
+      <svg class="logo" viewBox="0 0 32 32" width="32" height="32" aria-label="Pixel Forge Logo">
+        <rect x="2" y="2" width="8" height="8" fill="#ff004d"/>
+        <rect x="12" y="2" width="8" height="8" fill="#29adff"/>
+        <rect x="22" y="2" width="8" height="8" fill="#00e436"/>
+        <rect x="2" y="12" width="8" height="8" fill="#ffec27"/>
+        <rect x="12" y="12" width="8" height="8" fill="#ff77a8"/>
+        <rect x="22" y="12" width="8" height="8" fill="#fff1e8"/>
+        <rect x="2" y="22" width="8" height="8" fill="#ab5236"/>
+        <rect x="12" y="22" width="8" height="8" fill="#83769c"/>
+        <rect x="22" y="22" width="8" height="8" fill="#ff004d"/>
+      </svg>
+      <h1 class="title">PIXEL FORGE</h1>
+    </div>
+    <div class="header-right">
+      <button class="btn-retro btn-sound" id="soundToggle" aria-label="Toggle music">
+        <span class="sound-icon" id="soundIcon">♪ OFF</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Layout -->
+  <main class="app-main">
+    <!-- Left Toolbar -->
+    <aside class="toolbar">
+      <div class="toolbar-section">
+        <div class="toolbar-label">TOOLS</div>
+        <button class="tool-btn active" data-tool="brush" title="Brush (B)">
+          <svg viewBox="0 0 24 24" width="20" height="20"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/></svg>
+        </button>
+        <button class="tool-btn" data-tool="eraser" title="Eraser (E)">
+          <svg viewBox="0 0 24 24" width="20" height="20"><path d="M15.14 3c-.51 0-1.02.2-1.41.59L2.59 14.73a1.996 1.996 0 000 2.83l4.24 4.24h6.34l8.24-8.24a1.996 1.996 0 000-2.83L16.55 3.59c-.39-.39-.9-.59-1.41-.59zM5.41 16.15L12 9.56l4.24 4.24-6.59 6.59H6.83l-1.42-1.41v-.83z" fill="currentColor"/></svg>
+        </button>
+        <button class="tool-btn" data-tool="fill" title="Fill Bucket (F)">
+          <svg viewBox="0 0 24 24" width="20" height="20"><path d="M16.56 8.94L7.62 0 6.21 1.41l2.38 2.38-5.15 5.15a1.49 1.49 0 000 2.12l5.5 5.5c.29.29.68.44 1.06.44s.77-.15 1.06-.44l5.5-5.5c.59-.58.59-1.53 0-2.12zM5.21 10L10 5.21 14.79 10H5.21zM19 11.5s-2 2.17-2 3.5c0 1.1.9 2 2 2s2-.9 2-2c0-1.33-2-3.5-2-3.5z" fill="currentColor"/></svg>
+        </button>
+        <button class="tool-btn" data-tool="eyedropper" title="Eyedropper (I)">
+          <svg viewBox="0 0 24 24" width="20" height="20"><path d="M20.71 5.63l-2.34-2.34a1 1 0 00-1.41 0l-3.12 3.12-1.93-1.91-1.41 1.41 1.42 1.42L3 16.25V21h4.75l8.92-8.92 1.42 1.42 1.41-1.41-1.92-1.92 3.12-3.12a1 1 0 00.01-1.42zM6.92 19L5 17.08l8.06-8.06 1.92 1.92L6.92 19z" fill="currentColor"/></svg>
+        </button>
+      </div>
+
+      <div class="toolbar-section">
+        <div class="toolbar-label">COLOR</div>
+        <div class="color-preview-wrap">
+          <div class="color-preview" id="colorPreview"></div>
+          <input type="color" id="colorPicker" value="#ff004d" class="color-input">
+        </div>
+        <div class="palette" id="palette"></div>
+      </div>
+    </aside>
+
+    <!-- Canvas Area -->
+    <div class="canvas-area">
+      <div class="canvas-wrapper" id="canvasWrapper">
+        <canvas id="pixelCanvas"></canvas>
+        <canvas id="gridCanvas"></canvas>
+        <canvas id="cursorCanvas"></canvas>
+      </div>
+      <div class="canvas-info">
+        <span id="canvasSize">24 × 24</span>
+        <span class="separator">|</span>
+        <span id="cursorPos">0, 0</span>
+      </div>
+    </div>
+
+    <!-- Right Panel -->
+    <aside class="right-panel">
+      <div class="panel-section">
+        <div class="panel-label">CANVAS SIZE</div>
+        <div class="size-buttons">
+          <button class="btn-retro btn-size" data-size="16">16×16</button>
+          <button class="btn-retro btn-size active" data-size="24">24×24</button>
+          <button class="btn-retro btn-size" data-size="32">32×32</button>
+          <button class="btn-retro btn-size" data-size="64">64×64</button>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <div class="panel-label">ACTIONS</div>
+        <button class="btn-retro btn-action" id="clearBtn">CLEAR ALL</button>
+        <button class="btn-retro btn-action" id="undoBtn">UNDO</button>
+        <button class="btn-retro btn-action" id="redoBtn">REDO</button>
+      </div>
+
+      <div class="panel-section">
+        <div class="panel-label">EXPORT</div>
+        <button class="btn-retro btn-export" data-format="png">↓ PNG</button>
+        <button class="btn-retro btn-export" data-format="jpeg">↓ JPEG</button>
+        <button class="btn-retro btn-export" data-format="svg">↓ SVG</button>
+      </div>
+    </aside>
+  </main>
+
+  <script src="./app.js" type="module"></script>
+</body>
+</html>

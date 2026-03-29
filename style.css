@@ -1,0 +1,406 @@
+/* ============================================
+   PIXEL FORGE — Retro Arcade Theme
+   ============================================ */
+
+/* --- Reset & Base --- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Arcade palette */
+  --bg-dark: #1a1a2e;
+  --bg-darker: #0f0f1a;
+  --bg-panel: #16213e;
+  --bg-surface: #1c2a4a;
+  --border-color: #2a3a5c;
+  --border-glow: #29adff;
+
+  /* PICO-8 inspired colors */
+  --red: #ff004d;
+  --orange: #ffa300;
+  --yellow: #ffec27;
+  --green: #00e436;
+  --cyan: #29adff;
+  --blue: #1d2b53;
+  --purple: #7e2553;
+  --pink: #ff77a8;
+  --peach: #ffccaa;
+  --white: #fff1e8;
+  --light-gray: #c2c3c7;
+  --dark-gray: #5f574f;
+  --darker-gray: #ab5236;
+
+  --text: #fff1e8;
+  --text-muted: #83769c;
+
+  --font-display: 'Press Start 2P', monospace;
+  --font-body: 'Share Tech Mono', monospace;
+
+  --panel-radius: 4px;
+  --glow-sm: 0 0 6px rgba(41, 173, 255, 0.3);
+  --glow-md: 0 0 12px rgba(41, 173, 255, 0.4);
+  --glow-lg: 0 0 24px rgba(41, 173, 255, 0.3), 0 0 48px rgba(41, 173, 255, 0.1);
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-dark);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+  image-rendering: pixelated;
+}
+
+/* --- CRT Scanline Overlay --- */
+.crt-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1000;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.06) 0px,
+    rgba(0, 0, 0, 0.06) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+/* --- Header --- */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: var(--bg-darker);
+  border-bottom: 2px solid var(--border-color);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+  height: 52px;
+  z-index: 10;
+  position: relative;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo {
+  flex-shrink: 0;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--cyan);
+  text-shadow: 0 0 8px rgba(41, 173, 255, 0.6), 2px 2px 0 var(--blue);
+  letter-spacing: 2px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* --- Retro Buttons --- */
+.btn-retro {
+  font-family: var(--font-display);
+  font-size: 9px;
+  color: var(--text);
+  background: var(--bg-surface);
+  border: 2px solid var(--border-color);
+  padding: 6px 10px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.1s;
+  position: relative;
+  image-rendering: pixelated;
+}
+
+.btn-retro:hover {
+  border-color: var(--cyan);
+  box-shadow: var(--glow-sm);
+  color: var(--cyan);
+}
+
+.btn-retro:active {
+  transform: translate(1px, 1px);
+}
+
+.btn-sound {
+  min-width: 80px;
+}
+
+.btn-sound.active {
+  border-color: var(--green);
+  color: var(--green);
+  box-shadow: 0 0 8px rgba(0, 228, 54, 0.4);
+}
+
+.sound-icon {
+  font-family: var(--font-display);
+  font-size: 9px;
+}
+
+/* --- Main Layout --- */
+.app-main {
+  display: flex;
+  height: calc(100vh - 52px);
+  overflow: hidden;
+}
+
+/* --- Left Toolbar --- */
+.toolbar {
+  width: 180px;
+  min-width: 180px;
+  background: var(--bg-darker);
+  border-right: 2px solid var(--border-color);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.toolbar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toolbar-label, .panel-label {
+  font-family: var(--font-display);
+  font-size: 8px;
+  color: var(--text-muted);
+  letter-spacing: 2px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* --- Tool Buttons --- */
+.tool-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: var(--bg-surface);
+  border: 2px solid var(--border-color);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.tool-btn:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+.tool-btn.active {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  background: rgba(41, 173, 255, 0.15);
+  box-shadow: var(--glow-sm), inset 0 0 8px rgba(41, 173, 255, 0.1);
+}
+
+/* --- Color Picker --- */
+.color-preview-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.color-preview {
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--border-color);
+  background: var(--red);
+  cursor: pointer;
+  image-rendering: pixelated;
+}
+
+.color-input {
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--border-color);
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.color-input::-webkit-color-swatch-wrapper { padding: 2px; }
+.color-input::-webkit-color-swatch { border: none; border-radius: 0; }
+
+/* --- Palette --- */
+.palette {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3px;
+}
+
+.palette-color {
+  aspect-ratio: 1;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.1s;
+  image-rendering: pixelated;
+}
+
+.palette-color:hover {
+  border-color: var(--white);
+  transform: scale(1.15);
+  z-index: 1;
+}
+
+.palette-color.active {
+  border-color: var(--white);
+  box-shadow: 0 0 6px rgba(255, 241, 232, 0.5);
+}
+
+/* --- Canvas Area --- */
+.canvas-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background:
+    radial-gradient(ellipse at center, rgba(41, 173, 255, 0.04) 0%, transparent 70%),
+    var(--bg-dark);
+  position: relative;
+  overflow: hidden;
+}
+
+.canvas-wrapper {
+  position: relative;
+  border: 3px solid var(--border-color);
+  box-shadow: var(--glow-lg), inset 0 0 40px rgba(0, 0, 0, 0.3);
+  background: #000;
+  image-rendering: pixelated;
+}
+
+.canvas-wrapper canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  image-rendering: pixelated;
+}
+
+#pixelCanvas { z-index: 1; }
+#gridCanvas { z-index: 2; pointer-events: none; }
+#cursorCanvas { z-index: 3; }
+
+.canvas-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-family: var(--font-display);
+  font-size: 8px;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+}
+
+.separator {
+  color: var(--border-color);
+}
+
+/* --- Right Panel --- */
+.right-panel {
+  width: 160px;
+  min-width: 160px;
+  background: var(--bg-darker);
+  border-left: 2px solid var(--border-color);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.panel-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* --- Size Buttons --- */
+.size-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.btn-size {
+  font-size: 8px;
+  padding: 8px 4px;
+  text-align: center;
+}
+
+.btn-size.active {
+  border-color: var(--green);
+  color: var(--green);
+  background: rgba(0, 228, 54, 0.1);
+  box-shadow: 0 0 6px rgba(0, 228, 54, 0.3);
+}
+
+/* --- Action / Export Buttons --- */
+.btn-action, .btn-export {
+  width: 100%;
+  text-align: center;
+  padding: 8px;
+  font-size: 8px;
+}
+
+.btn-export {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
+.btn-export:hover {
+  border-color: var(--yellow);
+  color: var(--yellow);
+  box-shadow: 0 0 8px rgba(255, 163, 0, 0.4);
+}
+
+#clearBtn {
+  border-color: var(--red);
+  color: var(--red);
+}
+#clearBtn:hover {
+  box-shadow: 0 0 8px rgba(255, 0, 77, 0.4);
+}
+
+/* --- Animations --- */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: var(--glow-sm); }
+  50% { box-shadow: var(--glow-md); }
+}
+
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.97; }
+}
+
+.app-header {
+  animation: flicker 4s infinite;
+}
+
+/* --- Scrollbar --- */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-darker); }
+::-webkit-scrollbar-thumb { background: var(--border-color); }
+::-webkit-scrollbar-thumb:hover { background: var(--cyan); }
+
+/* --- Selection --- */
+::selection {
+  background: var(--cyan);
+  color: var(--bg-darker);
+}
