@@ -19,6 +19,6 @@ app.post('/api/download', upload.single('file'), (req, res) => {
   res.send(req.file.buffer);
 });
 
-app.get('*', (req, res) => res.sendFile('index.html', { root: '.' }));
+app.get('/{*path}', (req, res) => res.sendFile('index.html', { root: '.' }));
 
 app.listen(5000, '0.0.0.0', () => console.log('Pixel Forge running on port 5000'));
