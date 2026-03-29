@@ -1,22 +1,19 @@
 const express = require('express');
-const multer = require('multer');
 const app = express();
 
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
-
+app.use(express.json({ limit: '10mb' }));
 app.use(express.static('.'));
 
-// Download endpoint — serves file with Content-Disposition header
-// Required because the download attribute doesn't work in cross-origin iframes
-app.post('/api/download', upload.single('file'), (req, res) => {
-  if (!req.file) return res.status(400).send('No file');
+// Download endpoint — accepts base64 data, returns binary with Content-Disposition
+app.post('/api/download', (req, res) => {
+  const { data, filename, mimetype } = req.body;
+  if (!data || !filename) return res.status(400).send('Missing data or filename');
 
-  const filename = req.body.filename || 'pixel-art.png';
-  const mimetype = req.body.mimetype || req.file.mimetype || 'application/octet-stream';
-
-  res.setHeader('Content-Type', mimetype);
+  const buffer = Buffer.from(data, 'base64');
+  res.setHeader('Content-Type', mimetype || 'application/octet-stream');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-  res.send(req.file.buffer);
+  res.setHeader('Content-Length', buffer.length);
+  res.send(buffer);
 });
 
 app.get('/{*path}', (req, res) => res.sendFile('index.html', { root: '.' }));

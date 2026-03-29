@@ -32,6 +32,10 @@ const canvasSizeLabel = document.getElementById('canvasSize');
 const cursorPosLabel = document.getElementById('cursorPos');
 const soundToggle = document.getElementById('soundToggle');
 const soundIcon = document.getElementById('soundIcon');
+const bpmDisplay = document.getElementById('bpmDisplay');
+const bpmUp = document.getElementById('bpmUp');
+const bpmDown = document.getElementById('bpmDown');
+const bpmControl = document.getElementById('bpmControl');
 
 const pCtx = pixelCanvas.getContext('2d');
 const gCtx = gridCanvas.getContext('2d');
@@ -43,7 +47,6 @@ function getCanvasDisplaySize() {
   const maxW = area.clientWidth - 48;
   const maxH = area.clientHeight - 60;
   const maxDim = Math.min(maxW, maxH, 640);
-  // Snap to pixel multiple
   const cellSize = Math.floor(maxDim / gridSize);
   return cellSize * gridSize;
 }
@@ -51,7 +54,6 @@ function getCanvasDisplaySize() {
 // --- Initialize ---
 function initCanvas() {
   const displaySize = getCanvasDisplaySize();
-  const cellSize = displaySize / gridSize;
 
   [pixelCanvas, gridCanvas, cursorCanvas].forEach(c => {
     c.width = displaySize;
@@ -63,7 +65,6 @@ function initCanvas() {
   canvasWrapper.style.width = displaySize + 'px';
   canvasWrapper.style.height = displaySize + 'px';
 
-  // Init pixel data if size changed
   pixelData = Array.from({ length: gridSize }, () =>
     Array.from({ length: gridSize }, () => null)
   );
@@ -105,7 +106,6 @@ function renderPixels() {
 
   pCtx.clearRect(0, 0, size, size);
 
-  // Draw checker background for transparency
   for (let y = 0; y < gridSize; y++) {
     for (let x = 0; x < gridSize; x++) {
       const px = Math.floor(x * cellSize);
@@ -113,12 +113,10 @@ function renderPixels() {
       const pw = Math.floor((x + 1) * cellSize) - px;
       const ph = Math.floor((y + 1) * cellSize) - py;
 
-      // Checkerboard
       const isLight = (x + y) % 2 === 0;
       pCtx.fillStyle = isLight ? '#1a1a2e' : '#151528';
       pCtx.fillRect(px, py, pw, ph);
 
-      // Pixel color
       if (pixelData[y] && pixelData[y][x]) {
         pCtx.fillStyle = pixelData[y][x];
         pCtx.fillRect(px, py, pw, ph);
@@ -234,7 +232,6 @@ cursorCanvas.addEventListener('mousemove', (e) => {
 
   if (isDrawing && (currentTool === 'brush' || currentTool === 'eraser')) {
     if (!lastCell || lastCell.col !== col || lastCell.row !== row) {
-      // Bresenham line for smooth drawing
       if (lastCell) {
         bresenhamLine(lastCell.col, lastCell.row, col, row, (cx, cy) => {
           applyTool(cx, cy);
@@ -259,7 +256,6 @@ cursorCanvas.addEventListener('mouseleave', () => {
   cursorPosLabel.textContent = '—, —';
 });
 
-// Bresenham line algorithm
 function bresenhamLine(x0, y0, x1, y1, callback) {
   const dx = Math.abs(x1 - x0);
   const dy = Math.abs(y1 - y0);
@@ -328,7 +324,6 @@ function rgbToHex(rgb) {
   return '#' + match.slice(0, 3).map(x => parseInt(x).toString(16).padStart(2, '0')).join('');
 }
 
-// --- Color picker ---
 colorPicker.addEventListener('input', (e) => {
   currentColor = e.target.value;
   colorPreview.style.background = currentColor;
@@ -384,7 +379,10 @@ document.getElementById('redoBtn').addEventListener('click', () => {
   playSFX('click');
 });
 
-// --- Export ---
+// ============================================
+// EXPORT — Fixed for cross-origin iframes
+// ============================================
+
 document.querySelectorAll('.btn-export').forEach(btn => {
   btn.addEventListener('click', () => {
     const format = btn.dataset.format;
@@ -424,9 +422,40 @@ function exportImage(format) {
   const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
   const quality = format === 'jpeg' ? 0.95 : undefined;
 
-  exportCanvas.toBlob((blob) => {
-    triggerDownload(blob, `pixel-forge-${gridSize}x${gridSize}.${format}`, mimeType);
-  }, mimeType, quality);
+  // Use toDataURL → base64 → POST to server (reliable in cross-origin iframes)
+  const dataUrl = exportCanvas.toDataURL(mimeType, quality);
+  const base64 = dataUrl.split(',')[1];
+  const filename = `pixel-forge-${gridSize}x${gridSize}.${format}`;
+
+  fetch('./api/download', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ data: base64, filename, mimetype: mimeType })
+  })
+  .then(res => {
+    if (!res.ok) throw new Error('Download failed');
+    return res.blob();
+  })
+  .then(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  })
+  .catch(err => {
+    console.error('Export error:', err);
+    // Fallback: direct data URL download
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  });
 }
 
 function exportSVG() {
@@ -443,31 +472,30 @@ function exportSVG() {
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${gridSize} ${gridSize}" width="${gridSize * 16}" height="${gridSize * 16}" shape-rendering="crispEdges">
 ${rects}</svg>`;
 
-  const blob = new Blob([svg], { type: 'image/svg+xml' });
-  triggerDownload(blob, `pixel-forge-${gridSize}x${gridSize}.svg`, 'image/svg+xml');
-}
-
-function triggerDownload(blob, filename, mimeType) {
-  // Use server endpoint for Content-Disposition download
-  const formData = new FormData();
-  formData.append('file', blob, filename);
-  formData.append('filename', filename);
-  formData.append('mimetype', mimeType);
+  const base64 = btoa(unescape(encodeURIComponent(svg)));
+  const filename = `pixel-forge-${gridSize}x${gridSize}.svg`;
 
   fetch('./api/download', {
     method: 'POST',
-    body: formData
-  }).then(res => res.blob()).then(dlBlob => {
-    const url = URL.createObjectURL(dlBlob);
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ data: base64, filename, mimetype: 'image/svg+xml' })
+  })
+  .then(res => {
+    if (!res.ok) throw new Error('Download failed');
+    return res.blob();
+  })
+  .then(blob => {
+    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }).catch(() => {
-    // Fallback: direct blob URL
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  })
+  .catch(() => {
+    const blob = new Blob([svg], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -483,26 +511,15 @@ function triggerDownload(blob, filename, mimeType) {
 document.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT') return;
   switch (e.key.toLowerCase()) {
-    case 'b':
-      setTool('brush');
-      break;
-    case 'e':
-      setTool('eraser');
-      break;
-    case 'f':
-      setTool('fill');
-      break;
-    case 'i':
-      setTool('eyedropper');
-      break;
+    case 'b': setTool('brush'); break;
+    case 'e': setTool('eraser'); break;
+    case 'f': setTool('fill'); break;
+    case 'i': setTool('eyedropper'); break;
     case 'z':
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
-        if (e.shiftKey) {
-          document.getElementById('redoBtn').click();
-        } else {
-          document.getElementById('undoBtn').click();
-        }
+        if (e.shiftKey) document.getElementById('redoBtn').click();
+        else document.getElementById('undoBtn').click();
       }
       break;
   }
@@ -524,21 +541,33 @@ window.addEventListener('resize', () => {
   renderPixels();
 });
 
+
 // ============================================
-// CHIPTUNE MUSIC ENGINE (Web Audio API)
+// PROCEDURAL CHIPTUNE ENGINE (Web Audio API)
 // ============================================
+// Generates a brand new song every time you toggle music on.
+// Uses music theory: picks a random key/scale, generates
+// melody, bass, and arp patterns procedurally.
 
 let audioCtx = null;
 let musicPlaying = false;
 let musicNodes = [];
 let musicInterval = null;
+let masterGain = null;
+let currentBPM = 140;
+let melodyStep = 0;
+let currentSong = null; // holds the generated patterns
+
+const MIN_BPM = 60;
+const MAX_BPM = 240;
+const BPM_STEP = 10;
 
 function initAudio() {
   if (audioCtx) return;
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 }
 
-// SFX
+// --- SFX ---
 function playSFX(type) {
   if (!audioCtx) return;
   audioCtx.resume();
@@ -555,8 +584,7 @@ function playSFX(type) {
       osc.frequency.setValueAtTime(800 + Math.random() * 400, now);
       gain.gain.setValueAtTime(0.06, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-      osc.start(now);
-      osc.stop(now + 0.05);
+      osc.start(now); osc.stop(now + 0.05);
       break;
     case 'erase':
       osc.type = 'sawtooth';
@@ -564,16 +592,14 @@ function playSFX(type) {
       osc.frequency.linearRampToValueAtTime(80, now + 0.08);
       gain.gain.setValueAtTime(0.06, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-      osc.start(now);
-      osc.stop(now + 0.08);
+      osc.start(now); osc.stop(now + 0.08);
       break;
     case 'click':
       osc.type = 'square';
       osc.frequency.setValueAtTime(1200, now);
       gain.gain.setValueAtTime(0.08, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
-      osc.start(now);
-      osc.stop(now + 0.03);
+      osc.start(now); osc.stop(now + 0.03);
       break;
     case 'fill':
       osc.type = 'square';
@@ -581,8 +607,7 @@ function playSFX(type) {
       osc.frequency.linearRampToValueAtTime(1200, now + 0.15);
       gain.gain.setValueAtTime(0.08, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-      osc.start(now);
-      osc.stop(now + 0.15);
+      osc.start(now); osc.stop(now + 0.15);
       break;
     case 'pick':
       osc.type = 'triangle';
@@ -590,103 +615,194 @@ function playSFX(type) {
       osc.frequency.linearRampToValueAtTime(1400, now + 0.06);
       gain.gain.setValueAtTime(0.1, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
-      osc.start(now);
-      osc.stop(now + 0.06);
+      osc.start(now); osc.stop(now + 0.06);
       break;
-    case 'export':
+    case 'export': {
       osc.type = 'square';
       osc.frequency.setValueAtTime(523, now);
       gain.gain.setValueAtTime(0.1, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-      osc.start(now);
-      osc.stop(now + 0.1);
-      // Second note
-      const osc2 = audioCtx.createOscillator();
-      const gain2 = audioCtx.createGain();
-      osc2.connect(gain2);
-      gain2.connect(audioCtx.destination);
-      osc2.type = 'square';
-      osc2.frequency.setValueAtTime(659, now + 0.1);
-      gain2.gain.setValueAtTime(0.1, now + 0.1);
-      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-      osc2.start(now + 0.1);
-      osc2.stop(now + 0.2);
-      // Third note
-      const osc3 = audioCtx.createOscillator();
-      const gain3 = audioCtx.createGain();
-      osc3.connect(gain3);
-      gain3.connect(audioCtx.destination);
-      osc3.type = 'square';
-      osc3.frequency.setValueAtTime(784, now + 0.2);
-      gain3.gain.setValueAtTime(0.1, now + 0.2);
-      gain3.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-      osc3.start(now + 0.2);
-      osc3.stop(now + 0.35);
+      osc.start(now); osc.stop(now + 0.1);
+      const o2 = audioCtx.createOscillator(), g2 = audioCtx.createGain();
+      o2.connect(g2); g2.connect(audioCtx.destination);
+      o2.type = 'square'; o2.frequency.setValueAtTime(659, now + 0.1);
+      g2.gain.setValueAtTime(0.1, now + 0.1);
+      g2.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      o2.start(now + 0.1); o2.stop(now + 0.2);
+      const o3 = audioCtx.createOscillator(), g3 = audioCtx.createGain();
+      o3.connect(g3); g3.connect(audioCtx.destination);
+      o3.type = 'square'; o3.frequency.setValueAtTime(784, now + 0.2);
+      g3.gain.setValueAtTime(0.1, now + 0.2);
+      g3.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      o3.start(now + 0.2); o3.stop(now + 0.35);
       break;
+    }
     case 'clear':
       osc.type = 'sawtooth';
       osc.frequency.setValueAtTime(600, now);
       osc.frequency.linearRampToValueAtTime(100, now + 0.3);
       gain.gain.setValueAtTime(0.08, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-      osc.start(now);
-      osc.stop(now + 0.3);
+      osc.start(now); osc.stop(now + 0.3);
       break;
   }
 }
 
-// --- Chiptune Music ---
-// A catchy, looping 8-bit melody using Web Audio API
-const BPM = 140;
-const BEAT = 60 / BPM;
-const NOTE_FREQS = {
-  'C3': 130.81, 'D3': 146.83, 'E3': 164.81, 'F3': 174.61, 'G3': 196.00, 'A3': 220.00, 'B3': 246.94,
-  'C4': 261.63, 'D4': 293.66, 'E4': 329.63, 'F4': 349.23, 'G4': 392.00, 'A4': 440.00, 'B4': 493.88,
-  'C5': 523.25, 'D5': 587.33, 'E5': 659.25, 'F5': 698.46, 'G5': 783.99,
-  'R': 0 // rest
+// ============================================
+// PROCEDURAL SONG GENERATOR
+// ============================================
+
+// Note frequencies for 3 octaves
+function noteFreq(note, octave) {
+  const semitones = { C:0, D:2, E:4, F:5, G:7, A:9, B:11 };
+  const midi = 12 * (octave + 1) + (semitones[note] || 0);
+  return 440 * Math.pow(2, (midi - 69) / 12);
+}
+
+// Scale definitions (intervals from root)
+const SCALES = {
+  major:      [0, 2, 4, 5, 7, 9, 11],
+  minor:      [0, 2, 3, 5, 7, 8, 10],
+  pentatonic: [0, 2, 4, 7, 9],
+  dorian:     [0, 2, 3, 5, 7, 9, 10],
+  mixolydian: [0, 2, 4, 5, 7, 9, 10],
 };
 
-// Lead melody (two bars repeated)
-const melody = [
-  'E4','E4','R','E4','R','C4','E4','R',
-  'G4','R','R','R','G3','R','R','R',
-  'C4','R','R','G3','R','R','E3','R',
-  'R','A3','R','B3','R','A3','G3','R',
-  'E4','G4','A4','R','F4','G4','R','E4',
-  'R','C4','D4','B3','R','R','R','R',
-  'C4','R','R','G3','R','R','E3','R',
-  'R','A3','R','B3','R','A3','G3','R',
+const ROOT_NOTES = ['C', 'D', 'E', 'F', 'G', 'A'];
+const SCALE_NAMES = Object.keys(SCALES);
+
+// Get frequencies for a scale across octaves
+function getScaleFreqs(root, scaleName, octaveStart, octaveEnd) {
+  const rootSemitone = { C:0, D:2, E:4, F:5, G:7, A:9, B:11 }[root] || 0;
+  const intervals = SCALES[scaleName];
+  const freqs = [];
+  for (let oct = octaveStart; oct <= octaveEnd; oct++) {
+    for (const interval of intervals) {
+      const midi = 12 * (oct + 1) + rootSemitone + interval;
+      freqs.push(440 * Math.pow(2, (midi - 69) / 12));
+    }
+  }
+  return freqs;
+}
+
+// Chord progressions (scale degree indices, 0-based)
+const PROGRESSIONS = [
+  [0, 3, 4, 4],   // I-IV-V-V
+  [0, 0, 3, 4],   // I-I-IV-V
+  [0, 5, 3, 4],   // I-vi-IV-V
+  [0, 3, 5, 4],   // I-IV-vi-V
+  [0, 2, 3, 4],   // I-iii-IV-V
+  [0, 4, 5, 3],   // I-V-vi-IV
+  [0, 3, 0, 4],   // I-IV-I-V
+  [5, 3, 0, 4],   // vi-IV-I-V
 ];
 
-// Bass line
-const bassLine = [
-  'C3','R','C3','R','G3','R','G3','R',
-  'E3','R','E3','R','C3','R','C3','R',
-  'A3','R','A3','R','F3','R','F3','R',
-  'G3','R','G3','R','G3','R','G3','R',
-  'C3','R','C3','R','G3','R','G3','R',
-  'E3','R','E3','R','C3','R','C3','R',
-  'A3','R','A3','R','F3','R','F3','R',
-  'G3','R','G3','R','G3','R','G3','R',
+// Melody rhythm patterns (1 = note, 0 = rest, per 16th note, 16 steps = 1 bar)
+const RHYTHM_PATTERNS = [
+  [1,0,1,0, 1,1,0,1, 0,1,0,0, 1,0,1,0],
+  [1,1,0,1, 0,0,1,0, 1,0,1,1, 0,1,0,0],
+  [1,0,0,1, 1,0,1,0, 0,1,0,1, 1,0,0,1],
+  [1,1,1,0, 1,0,0,1, 1,0,1,0, 0,1,1,0],
+  [1,0,1,1, 0,1,0,0, 1,1,0,1, 0,0,1,0],
+  [0,1,1,0, 1,0,1,1, 0,0,1,0, 1,1,0,1],
 ];
 
-// Arp pattern
-const arpPattern = [
-  'C5','E5','G5','E5','C5','E5','G5','E5',
-  'E5','G5','C5','G5','E5','G5','C5','G5',
-  'A4','C5','E5','C5','A4','C5','E5','C5',
-  'G4','B4','D5','B4','G4','B4','D5','B4',
-  'C5','E5','G5','E5','C5','E5','G5','E5',
-  'E5','G5','C5','G5','E5','G5','C5','G5',
-  'A4','C5','E5','C5','A4','C5','E5','C5',
-  'G4','B4','D5','B4','G4','B4','D5','B4',
+// Bass rhythm patterns
+const BASS_RHYTHMS = [
+  [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0],
+  [1,0,0,1, 0,0,1,0, 0,1,0,0, 1,0,0,0],
+  [1,0,1,0, 0,0,1,0, 1,0,1,0, 0,0,1,0],
+  [1,0,0,0, 0,0,1,0, 1,0,0,0, 0,1,0,0],
 ];
 
-let melodyStep = 0;
-let masterGain = null;
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
+function generateSong() {
+  const root = pick(ROOT_NOTES);
+  const scaleName = pick(SCALE_NAMES);
+  const progression = pick(PROGRESSIONS);
+  const melodyRhythm = pick(RHYTHM_PATTERNS);
+  const bassRhythm = pick(BASS_RHYTHMS);
+
+  // Build scale frequencies
+  const melodyFreqs = getScaleFreqs(root, scaleName, 4, 5);  // octaves 4-5
+  const bassFreqs = getScaleFreqs(root, scaleName, 2, 3);     // octaves 2-3
+  const arpFreqs = getScaleFreqs(root, scaleName, 4, 5);      // octaves 4-5
+
+  const intervals = SCALES[scaleName];
+  const SONG_LENGTH = 64; // 4 bars of 16 sixteenth notes
+
+  // Generate melody: walk through scale with occasional jumps
+  const melody = [];
+  let melIdx = Math.floor(melodyFreqs.length / 3); // start mid-range
+  for (let i = 0; i < SONG_LENGTH; i++) {
+    const barBeat = i % 16;
+    const rhythmHit = melodyRhythm[barBeat];
+    if (rhythmHit) {
+      // Stepwise motion with occasional jumps
+      const jump = Math.random();
+      if (jump < 0.5) melIdx += pick([-1, 1]);
+      else if (jump < 0.75) melIdx += pick([-2, 2]);
+      else if (jump < 0.9) melIdx += pick([-3, 3]);
+      // On beat 0 of each bar, gravitate toward chord root
+      if (barBeat === 0 && Math.random() < 0.6) {
+        const chordIdx = progression[Math.floor(i / 16)];
+        melIdx = chordIdx + intervals.length; // push to octave 5 range
+      }
+      melIdx = Math.max(0, Math.min(melodyFreqs.length - 1, melIdx));
+      melody.push(melodyFreqs[melIdx]);
+    } else {
+      melody.push(0); // rest
+    }
+  }
+
+  // Generate bass: root notes of chords following bass rhythm
+  const bass = [];
+  for (let i = 0; i < SONG_LENGTH; i++) {
+    const bar = Math.floor(i / 16);
+    const barBeat = i % 16;
+    const chordDegree = progression[bar % progression.length];
+    const bassHit = bassRhythm[barBeat];
+    if (bassHit) {
+      // Root of chord in bass range
+      const bassIdx = Math.min(chordDegree, bassFreqs.length - 1);
+      bass.push(bassFreqs[bassIdx]);
+    } else {
+      bass.push(0);
+    }
+  }
+
+  // Generate arp: cycle through chord tones
+  const arp = [];
+  for (let i = 0; i < SONG_LENGTH; i++) {
+    const bar = Math.floor(i / 16);
+    const chordDegree = progression[bar % progression.length];
+    // Build triad from scale degree
+    const triad = [0, 2, 4].map(offset => {
+      const idx = chordDegree + offset;
+      return arpFreqs[Math.min(idx, arpFreqs.length - 1)];
+    });
+    // Cycle through triad notes
+    const arpIdx = i % triad.length;
+    // Arp on every other step
+    if (i % 2 === 0) {
+      arp.push(triad[arpIdx]);
+    } else {
+      arp.push(0);
+    }
+  }
+
+  // Pick random waveforms for variety
+  const leadWaves = ['square', 'sawtooth'];
+  const leadWave = pick(leadWaves);
+  const arpWave = pick(['square', 'triangle']);
+
+  return { melody, bass, arp, leadWave, arpWave, root, scaleName, length: SONG_LENGTH };
+}
+
+// --- Play a note ---
 function playNote(freq, time, duration, type, volume, dest) {
-  if (freq === 0) return;
+  if (freq === 0 || !audioCtx) return;
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
   osc.type = type;
@@ -702,36 +818,40 @@ function playNote(freq, time, duration, type, volume, dest) {
 }
 
 function scheduleMusicBatch() {
-  if (!musicPlaying || !audioCtx) return;
+  if (!musicPlaying || !audioCtx || !currentSong) return;
 
   const now = audioCtx.currentTime;
-  const sixteenth = BEAT / 4;
+  const beat = 60 / currentBPM;
+  const sixteenth = beat / 4;
 
-  // Schedule 16 steps ahead
   for (let i = 0; i < 16; i++) {
     const time = now + i * sixteenth;
-    const step = (melodyStep + i) % melody.length;
+    const step = (melodyStep + i) % currentSong.length;
 
-    // Lead melody
-    const melNote = NOTE_FREQS[melody[step]];
-    if (melNote) playNote(melNote, time, sixteenth * 0.8, 'square', 0.08, masterGain);
-
+    // Lead
+    if (currentSong.melody[step]) {
+      playNote(currentSong.melody[step], time, sixteenth * 0.8, currentSong.leadWave, 0.08, masterGain);
+    }
     // Bass
-    const bassNote = NOTE_FREQS[bassLine[step]];
-    if (bassNote) playNote(bassNote, time, sixteenth * 0.9, 'triangle', 0.1, masterGain);
-
-    // Arp (quieter)
-    const arpNote = NOTE_FREQS[arpPattern[step]];
-    if (arpNote) playNote(arpNote, time, sixteenth * 0.5, 'square', 0.03, masterGain);
+    if (currentSong.bass[step]) {
+      playNote(currentSong.bass[step], time, sixteenth * 0.9, 'triangle', 0.1, masterGain);
+    }
+    // Arp
+    if (currentSong.arp[step]) {
+      playNote(currentSong.arp[step], time, sixteenth * 0.5, currentSong.arpWave, 0.03, masterGain);
+    }
   }
 
-  melodyStep = (melodyStep + 16) % melody.length;
+  melodyStep = (melodyStep + 16) % currentSong.length;
 }
 
 function startMusic() {
   initAudio();
   if (musicPlaying) return;
   audioCtx.resume();
+
+  // Generate a fresh song every time
+  currentSong = generateSong();
 
   masterGain = audioCtx.createGain();
   masterGain.gain.setValueAtTime(0.5, audioCtx.currentTime);
@@ -740,11 +860,14 @@ function startMusic() {
   musicPlaying = true;
   melodyStep = 0;
 
-  const sixteenth = BEAT / 4;
-  const batchInterval = sixteenth * 16 * 1000 * 0.9; // Schedule slightly early
+  const beat = 60 / currentBPM;
+  const sixteenth = beat / 4;
+  const batchInterval = sixteenth * 16 * 1000 * 0.9;
 
   scheduleMusicBatch();
   musicInterval = setInterval(scheduleMusicBatch, batchInterval);
+
+  bpmControl.classList.add('active');
 }
 
 function stopMusic() {
@@ -761,6 +884,34 @@ function stopMusic() {
     try { masterGain.disconnect(); } catch (e) {}
     masterGain = null;
   }
+  bpmControl.classList.remove('active');
+}
+
+function restartMusicWithNewTiming() {
+  if (!musicPlaying) return;
+  // Stop scheduling, restart with new BPM
+  if (musicInterval) {
+    clearInterval(musicInterval);
+    musicInterval = null;
+  }
+  musicNodes.forEach(node => {
+    try { node.disconnect(); } catch (e) {}
+  });
+  musicNodes = [];
+  if (masterGain) {
+    try { masterGain.disconnect(); } catch (e) {}
+  }
+
+  masterGain = audioCtx.createGain();
+  masterGain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+  masterGain.connect(audioCtx.destination);
+
+  const beat = 60 / currentBPM;
+  const sixteenth = beat / 4;
+  const batchInterval = sixteenth * 16 * 1000 * 0.9;
+
+  scheduleMusicBatch();
+  musicInterval = setInterval(scheduleMusicBatch, batchInterval);
 }
 
 // --- Sound Toggle ---
@@ -777,11 +928,44 @@ soundToggle.addEventListener('click', () => {
   }
 });
 
+// --- BPM Controls ---
+bpmUp.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (currentBPM < MAX_BPM) {
+    currentBPM += BPM_STEP;
+    bpmDisplay.textContent = currentBPM;
+    if (musicPlaying) restartMusicWithNewTiming();
+    playSFX('click');
+  }
+});
+
+bpmDown.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (currentBPM > MIN_BPM) {
+    currentBPM -= BPM_STEP;
+    bpmDisplay.textContent = currentBPM;
+    if (musicPlaying) restartMusicWithNewTiming();
+    playSFX('click');
+  }
+});
+
+// Mouse wheel on BPM display for quick adjustment
+bpmControl.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  if (e.deltaY < 0 && currentBPM < MAX_BPM) {
+    currentBPM += BPM_STEP;
+  } else if (e.deltaY > 0 && currentBPM > MIN_BPM) {
+    currentBPM -= BPM_STEP;
+  }
+  bpmDisplay.textContent = currentBPM;
+  if (musicPlaying) restartMusicWithNewTiming();
+}, { passive: false });
+
 // --- Init ---
 buildPalette();
 initCanvas();
+bpmDisplay.textContent = currentBPM;
 
-// Init audio context on first interaction
 document.addEventListener('click', () => {
   initAudio();
 }, { once: true });
