@@ -464,3 +464,242 @@ html, body {
   background: var(--cyan);
   color: var(--bg-darker);
 }
+
+/* ============================================
+   MOBILE: hide desktop sidebars, show bottom bar + drawers
+   ============================================ */
+
+/* Mobile elements hidden on desktop */
+.mobile-bar,
+.mobile-drawer,
+.drawer-backdrop { display: none; }
+
+@media (max-width: 768px) {
+  /* Hide desktop sidebars */
+  .toolbar, .right-panel { display: none !important; }
+
+  /* Header compact */
+  .app-header { height: 44px; padding: 4px 10px; }
+  .title { font-size: 11px; letter-spacing: 1px; }
+  .logo { width: 22px; height: 22px; }
+  .header-left { gap: 8px; }
+  .header-right { gap: 6px; }
+  .bpm-control { padding: 2px 4px; }
+  .bpm-btn { width: 20px; height: 20px; font-size: 9px; }
+  .bpm-display { font-size: 9px; min-width: 28px; }
+  .bpm-label { font-size: 6px; }
+  .btn-sound { min-width: 60px; padding: 4px 6px; font-size: 8px; }
+  .sound-icon { font-size: 8px; }
+
+  /* Canvas takes full available space */
+  .app-main {
+    height: calc(100vh - 44px - 52px); /* header + bottom bar */
+    overflow: hidden;
+  }
+
+  .canvas-area {
+    padding: 8px;
+    justify-content: center;
+  }
+
+  .canvas-info {
+    margin-top: 6px;
+    font-size: 7px;
+  }
+
+  /* --- Mobile Bottom Bar --- */
+  .mobile-bar {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: var(--bg-darker);
+    border-top: 2px solid var(--border-color);
+    height: 52px;
+    flex-direction: column;
+  }
+
+  .mobile-tools {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    height: 100%;
+    padding: 0 8px;
+  }
+
+  .mobile-tool-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    background: transparent;
+    border: 2px solid transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.1s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-tool-btn.active {
+    border-color: var(--cyan);
+    color: var(--cyan);
+    background: rgba(41, 173, 255, 0.12);
+  }
+
+  .mobile-tool-sep {
+    width: 1px;
+    height: 28px;
+    background: var(--border-color);
+    margin: 0 4px;
+    flex-shrink: 0;
+  }
+
+  .mobile-tab-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    background: transparent;
+    border: 2px solid transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.1s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-tab-btn:hover,
+  .mobile-tab-btn.active {
+    color: var(--yellow);
+    border-color: var(--yellow);
+  }
+
+  /* --- Drawers --- */
+  .mobile-drawer {
+    display: block;
+    position: fixed;
+    bottom: 52px;
+    left: 0;
+    right: 0;
+    z-index: 90;
+    background: var(--bg-darker);
+    border-top: 2px solid var(--border-color);
+    transform: translateY(100%);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    max-height: 55vh;
+    overflow-y: auto;
+  }
+
+  .mobile-drawer.open {
+    transform: translateY(0);
+  }
+
+  .drawer-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .drawer-handle-bar {
+    width: 32px;
+    height: 3px;
+    background: var(--border-color);
+    border-radius: 2px;
+  }
+
+  .drawer-title {
+    font-family: var(--font-display);
+    font-size: 8px;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+  }
+
+  .drawer-content {
+    padding: 8px 12px 16px;
+  }
+
+  /* Colors drawer */
+  .drawer-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .mobile-color-preview {
+    width: 36px;
+    height: 36px;
+  }
+
+  .mobile-color-input {
+    width: 36px;
+    height: 36px;
+  }
+
+  .mobile-palette {
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+  }
+
+  .mobile-palette .palette-color {
+    min-height: 32px;
+  }
+
+  /* Settings drawer */
+  .drawer-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .drawer-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .drawer-group-label {
+    font-family: var(--font-display);
+    font-size: 7px;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+  }
+
+  .drawer-size-btns,
+  .drawer-action-btns,
+  .drawer-export-btns {
+    display: flex;
+    gap: 4px;
+  }
+
+  .mobile-size-btn,
+  .mobile-action-btn,
+  .mobile-export-btn {
+    flex: 1;
+    text-align: center;
+    padding: 10px 4px;
+    font-size: 8px;
+    min-height: 38px;
+  }
+
+  /* Backdrop */
+  .drawer-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    background: rgba(0, 0, 0, 0.5);
+  }
+
+  .drawer-backdrop.visible {
+    display: block;
+  }
+}

@@ -917,6 +917,10 @@ function restartMusicWithNewTiming() {
 // --- Sound Toggle ---
 soundToggle.addEventListener('click', () => {
   initAudio();
+  // Force resume AudioContext (required in sandboxed iframes and iOS Safari)
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
   if (musicPlaying) {
     stopMusic();
     soundToggle.classList.remove('active');
@@ -926,6 +930,13 @@ soundToggle.addEventListener('click', () => {
     soundToggle.classList.add('active');
     soundIcon.textContent = '♪ ON';
   }
+});
+
+// Also listen for touchstart on sound toggle (iOS needs it)
+soundToggle.addEventListener('touchend', (e) => {
+  // Prevent double-fire with click
+  e.preventDefault();
+  soundToggle.click();
 });
 
 // --- BPM Controls ---
@@ -961,11 +972,206 @@ bpmControl.addEventListener('wheel', (e) => {
   if (musicPlaying) restartMusicWithNewTiming();
 }, { passive: false });
 
+// ============================================
+// MOBILE UI — Drawers & Tool Sync
+// ============================================
+
+const mobileColorsDrawer = document.getElementById('mobileColorsDrawer');
+const mobileSettingsDrawer = document.getElementById('mobileSettingsDrawer');
+const drawerBackdrop = document.getElementById('drawerBackdrop');
+const mobileColorPreview = document.getElementById('mobileColorPreview');
+const mobileColorPicker = document.getElementById('mobileColorPicker');
+const mobilePalette = document.getElementById('mobilePalette');
+
+let activeDrawer = null;
+
+function openDrawer(drawerId) {
+  const drawer = document.getElementById(drawerId);
+  if (!drawer) return;
+
+  // If same drawer, close it
+  if (activeDrawer === drawerId) {
+    closeDrawers();
+    return;
+  }
+
+  // Close any open drawer first
+  document.querySelectorAll('.mobile-drawer.open').forEach(d => d.classList.remove('open'));
+  document.querySelectorAll('.mobile-tab-btn').forEach(b => b.classList.remove('active'));
+
+  drawer.classList.add('open');
+  drawerBackdrop.classList.add('visible');
+  activeDrawer = drawerId;
+
+  // Highlight the tab
+  const panel = drawerId === 'mobileColorsDrawer' ? 'colors' : 'settings';
+  document.querySelector(`.mobile-tab-btn[data-panel="${panel}"]`)?.classList.add('active');
+}
+
+function closeDrawers() {
+  document.querySelectorAll('.mobile-drawer.open').forEach(d => d.classList.remove('open'));
+  document.querySelectorAll('.mobile-tab-btn').forEach(b => b.classList.remove('active'));
+  drawerBackdrop.classList.remove('visible');
+  activeDrawer = null;
+}
+
+// Tab buttons
+document.querySelectorAll('.mobile-tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const panel = btn.dataset.panel;
+    const drawerId = panel === 'colors' ? 'mobileColorsDrawer' : 'mobileSettingsDrawer';
+    openDrawer(drawerId);
+    playSFX('click');
+  });
+});
+
+// Drawer handles (tap to close)
+document.querySelectorAll('.drawer-handle').forEach(handle => {
+  handle.addEventListener('click', () => {
+    closeDrawers();
+  });
+});
+
+// Backdrop tap closes
+if (drawerBackdrop) {
+  drawerBackdrop.addEventListener('click', closeDrawers);
+}
+
+// Mobile tool buttons
+document.querySelectorAll('.mobile-tool-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tool = btn.dataset.tool;
+    currentTool = tool;
+
+    // Sync both mobile and desktop tool buttons
+    document.querySelectorAll('.tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === tool));
+    document.querySelectorAll('.mobile-tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === tool));
+
+    closeDrawers();
+    playSFX('click');
+  });
+});
+
+// Build mobile palette
+function buildMobilePalette() {
+  if (!mobilePalette) return;
+  mobilePalette.innerHTML = '';
+  PALETTE.forEach(color => {
+    const swatch = document.createElement('div');
+    swatch.className = 'palette-color';
+    swatch.style.background = color;
+    if (color === currentColor) swatch.classList.add('active');
+    swatch.addEventListener('click', () => {
+      currentColor = color;
+      syncColorUI();
+      playSFX('click');
+    });
+    mobilePalette.appendChild(swatch);
+  });
+}
+
+function syncColorUI() {
+  colorPicker.value = currentColor;
+  colorPreview.style.background = currentColor;
+  if (mobileColorPicker) mobileColorPicker.value = currentColor;
+  if (mobileColorPreview) mobileColorPreview.style.background = currentColor;
+  updatePaletteSelection();
+  // Sync mobile palette
+  if (mobilePalette) {
+    mobilePalette.querySelectorAll('.palette-color').forEach(el => {
+      el.classList.toggle('active', rgbToHex(el.style.background) === currentColor);
+    });
+  }
+}
+
+// Mobile color picker
+if (mobileColorPicker) {
+  mobileColorPicker.addEventListener('input', (e) => {
+    currentColor = e.target.value;
+    syncColorUI();
+  });
+}
+if (mobileColorPreview) {
+  mobileColorPreview.style.background = currentColor;
+}
+
+// Mobile size buttons
+document.querySelectorAll('.mobile-size-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const newSize = parseInt(btn.dataset.size);
+    if (newSize === gridSize) return;
+    gridSize = newSize;
+    // Sync both mobile and desktop size buttons
+    document.querySelectorAll('.btn-size').forEach(b => b.classList.toggle('active', parseInt(b.dataset.size) === newSize));
+    initCanvas();
+    playSFX('click');
+  });
+});
+
+// Mobile action buttons
+const mobileClearBtn = document.getElementById('mobileClearBtn');
+const mobileUndoBtn = document.getElementById('mobileUndoBtn');
+const mobileRedoBtn = document.getElementById('mobileRedoBtn');
+
+if (mobileClearBtn) {
+  mobileClearBtn.addEventListener('click', () => {
+    saveState();
+    pixelData = Array.from({ length: gridSize }, () => Array(gridSize).fill(null));
+    renderPixels();
+    playSFX('clear');
+  });
+}
+if (mobileUndoBtn) {
+  mobileUndoBtn.addEventListener('click', () => {
+    if (undoStack.length === 0) return;
+    redoStack.push(pixelData.map(row => [...row]));
+    pixelData = undoStack.pop();
+    renderPixels();
+    playSFX('click');
+  });
+}
+if (mobileRedoBtn) {
+  mobileRedoBtn.addEventListener('click', () => {
+    if (redoStack.length === 0) return;
+    undoStack.push(pixelData.map(row => [...row]));
+    pixelData = redoStack.pop();
+    renderPixels();
+    playSFX('click');
+  });
+}
+
+// Mobile export buttons
+document.querySelectorAll('.mobile-export-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    exportImage(btn.dataset.format);
+    playSFX('export');
+  });
+});
+
+// Also sync desktop tool buttons with mobile
+const origToolBtns = document.querySelectorAll('.tool-btn');
+origToolBtns.forEach(btn => {
+  const orig = btn.onclick;
+  btn.addEventListener('click', () => {
+    const tool = btn.dataset.tool;
+    document.querySelectorAll('.mobile-tool-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.tool === tool);
+    });
+  });
+});
+
 // --- Init ---
 buildPalette();
+buildMobilePalette();
 initCanvas();
 bpmDisplay.textContent = currentBPM;
 
-document.addEventListener('click', () => {
-  initAudio();
-}, { once: true });
+// Audio init: try on first touch AND first click (mobile Safari needs touch)
+['click', 'touchstart'].forEach(evt => {
+  document.addEventListener(evt, () => {
+    initAudio();
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+  }, { once: true });
+});

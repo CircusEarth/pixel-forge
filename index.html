@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>PIXEL FORGE — 8-Bit Art Studio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&display=swap" rel="stylesheet">
@@ -15,7 +15,7 @@
   <!-- Header -->
   <header class="app-header">
     <div class="header-left">
-      <svg class="logo" viewBox="0 0 32 32" width="32" height="32" aria-label="Pixel Forge Logo">
+      <svg class="logo" viewBox="0 0 32 32" width="28" height="28" aria-label="Pixel Forge Logo">
         <rect x="2" y="2" width="8" height="8" fill="#ff004d"/>
         <rect x="12" y="2" width="8" height="8" fill="#29adff"/>
         <rect x="22" y="2" width="8" height="8" fill="#00e436"/>
@@ -43,8 +43,8 @@
 
   <!-- Main Layout -->
   <main class="app-main">
-    <!-- Left Toolbar -->
-    <aside class="toolbar">
+    <!-- Left Toolbar (desktop) / hidden on mobile -->
+    <aside class="toolbar" id="desktopToolbar">
       <div class="toolbar-section">
         <div class="toolbar-label">TOOLS</div>
         <button class="tool-btn active" data-tool="brush" title="Brush (B)">
@@ -85,8 +85,8 @@
       </div>
     </div>
 
-    <!-- Right Panel -->
-    <aside class="right-panel">
+    <!-- Right Panel (desktop) / hidden on mobile -->
+    <aside class="right-panel" id="desktopRightPanel">
       <div class="panel-section">
         <div class="panel-label">CANVAS SIZE</div>
         <div class="size-buttons">
@@ -112,6 +112,86 @@
       </div>
     </aside>
   </main>
+
+  <!-- Mobile Bottom Bar -->
+  <nav class="mobile-bar" id="mobileBar">
+    <!-- Tool quick-select row -->
+    <div class="mobile-tools">
+      <button class="mobile-tool-btn active" data-tool="brush" aria-label="Brush">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/></svg>
+      </button>
+      <button class="mobile-tool-btn" data-tool="eraser" aria-label="Eraser">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path d="M15.14 3c-.51 0-1.02.2-1.41.59L2.59 14.73a1.996 1.996 0 000 2.83l4.24 4.24h6.34l8.24-8.24a1.996 1.996 0 000-2.83L16.55 3.59c-.39-.39-.9-.59-1.41-.59zM5.41 16.15L12 9.56l4.24 4.24-6.59 6.59H6.83l-1.42-1.41v-.83z" fill="currentColor"/></svg>
+      </button>
+      <button class="mobile-tool-btn" data-tool="fill" aria-label="Fill">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path d="M16.56 8.94L7.62 0 6.21 1.41l2.38 2.38-5.15 5.15a1.49 1.49 0 000 2.12l5.5 5.5c.29.29.68.44 1.06.44s.77-.15 1.06-.44l5.5-5.5c.59-.58.59-1.53 0-2.12zM5.21 10L10 5.21 14.79 10H5.21zM19 11.5s-2 2.17-2 3.5c0 1.1.9 2 2 2s2-.9 2-2c0-1.33-2-3.5-2-3.5z" fill="currentColor"/></svg>
+      </button>
+      <button class="mobile-tool-btn" data-tool="eyedropper" aria-label="Eyedropper">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path d="M20.71 5.63l-2.34-2.34a1 1 0 00-1.41 0l-3.12 3.12-1.93-1.91-1.41 1.41 1.42 1.42L3 16.25V21h4.75l8.92-8.92 1.42 1.42 1.41-1.41-1.92-1.92 3.12-3.12a1 1 0 00.01-1.42zM6.92 19L5 17.08l8.06-8.06 1.92 1.92L6.92 19z" fill="currentColor"/></svg>
+      </button>
+      <div class="mobile-tool-sep"></div>
+      <button class="mobile-tab-btn" data-panel="colors" aria-label="Colors panel">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path d="M12 2C6.49 2 2 6.49 2 12s4.49 10 10 10a2.5 2.5 0 002.5-2.5c0-.61-.23-1.21-.64-1.67A1.36 1.36 0 0113.5 17c0-.75.61-1.36 1.36-1.36H17c2.76 0 5-2.24 5-5C22 5.92 17.51 2 12 2zM6.5 13a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm3-4a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm5 0a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm3 4a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" fill="currentColor"/></svg>
+      </button>
+      <button class="mobile-tab-btn" data-panel="settings" aria-label="Settings panel">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.49.49 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 00-.48-.41h-3.84a.48.48 0 00-.48.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 00-.59.22L2.74 8.87a.48.48 0 00.12.61l2.03 1.58c-.05.3-.07.63-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1115.6 12 3.6 3.6 0 0112 15.6z" fill="currentColor"/></svg>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Mobile Panels (slide up drawers) -->
+  <div class="mobile-drawer" id="mobileColorsDrawer">
+    <div class="drawer-handle" data-drawer="mobileColorsDrawer">
+      <div class="drawer-handle-bar"></div>
+      <span class="drawer-title">COLORS</span>
+    </div>
+    <div class="drawer-content">
+      <div class="drawer-row">
+        <div class="color-preview mobile-color-preview" id="mobileColorPreview"></div>
+        <input type="color" id="mobileColorPicker" value="#ff004d" class="color-input mobile-color-input">
+      </div>
+      <div class="palette mobile-palette" id="mobilePalette"></div>
+    </div>
+  </div>
+
+  <div class="mobile-drawer" id="mobileSettingsDrawer">
+    <div class="drawer-handle" data-drawer="mobileSettingsDrawer">
+      <div class="drawer-handle-bar"></div>
+      <span class="drawer-title">OPTIONS</span>
+    </div>
+    <div class="drawer-content">
+      <div class="drawer-grid">
+        <div class="drawer-group">
+          <div class="drawer-group-label">SIZE</div>
+          <div class="drawer-size-btns">
+            <button class="btn-retro btn-size mobile-size-btn" data-size="16">16</button>
+            <button class="btn-retro btn-size mobile-size-btn active" data-size="24">24</button>
+            <button class="btn-retro btn-size mobile-size-btn" data-size="32">32</button>
+            <button class="btn-retro btn-size mobile-size-btn" data-size="64">64</button>
+          </div>
+        </div>
+        <div class="drawer-group">
+          <div class="drawer-group-label">ACTIONS</div>
+          <div class="drawer-action-btns">
+            <button class="btn-retro btn-action mobile-action-btn" id="mobileClearBtn">CLEAR</button>
+            <button class="btn-retro btn-action mobile-action-btn" id="mobileUndoBtn">UNDO</button>
+            <button class="btn-retro btn-action mobile-action-btn" id="mobileRedoBtn">REDO</button>
+          </div>
+        </div>
+        <div class="drawer-group">
+          <div class="drawer-group-label">EXPORT</div>
+          <div class="drawer-export-btns">
+            <button class="btn-retro btn-export mobile-export-btn" data-format="png">PNG</button>
+            <button class="btn-retro btn-export mobile-export-btn" data-format="jpeg">JPEG</button>
+            <button class="btn-retro btn-export mobile-export-btn" data-format="svg">SVG</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Drawer backdrop -->
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
 
   <script src="./app.js" type="module"></script>
 </body>
